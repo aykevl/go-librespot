@@ -124,7 +124,7 @@ func (p *AppPlayer) handleDealerMessage(msg dealer.Message) error {
 			p.logout <- p
 		}
 
-		p.app.server.Emit(&ApiEvent{
+		p.app.Emit(&ApiEvent{
 			Type: ApiEventTypeInactive,
 		})
 	}
@@ -211,7 +211,7 @@ func (p *AppPlayer) handlePlayerCommand(req dealer.RequestPayload) error {
 			return fmt.Errorf("failed loading current track (transfer): %w", err)
 		}
 
-		p.app.server.Emit(&ApiEvent{
+		p.app.Emit(&ApiEvent{
 			Type: ApiEventTypeActive,
 		})
 

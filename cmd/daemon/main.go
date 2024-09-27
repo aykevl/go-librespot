@@ -37,8 +37,10 @@ type App struct {
 	deviceType  devicespb.DeviceType
 	clientToken string
 
-	server   *ApiServer
-	logoutCh chan *AppPlayer
+	server    *ApiServer
+	mpdserver *MPDServer
+	requests  chan ApiRequest
+	logoutCh  chan *AppPlayer
 }
 
 func parseDeviceType(val string) (devicespb.DeviceType, error) {
@@ -51,7 +53,7 @@ func parseDeviceType(val string) (devicespb.DeviceType, error) {
 }
 
 func NewApp(cfg *Config) (app *App, err error) {
-	app = &App{cfg: cfg, logoutCh: make(chan *AppPlayer)}
+	app = &App{cfg: cfg, logoutCh: make(chan *AppPlayer), requests: make(chan ApiRequest)}
 
 	app.deviceType, err = parseDeviceType(cfg.DeviceType)
 	if err != nil {
@@ -202,7 +204,7 @@ func (app *App) withAppPlayer(appPlayerFunc func() (*AppPlayer, error)) (err err
 			panic("zeroconf is disabled and no credentials are present")
 		}
 
-		appPlayer.Run(app.server.Receive())
+		appPlayer.Run(app.requests)
 		return nil
 	}
 
@@ -239,7 +241,7 @@ func (app *App) withAppPlayer(appPlayerFunc func() (*AppPlayer, error)) (err err
 	go func() {
 		for {
 			select {
-			case req := <-app.server.Receive():
+			case req := <-app.requests:
 				if currentPlayer == nil {
 					req.Reply(nil, ErrNoSession)
 					break
@@ -320,6 +322,13 @@ func (app *App) withAppPlayer(appPlayerFunc func() (*AppPlayer, error)) (err err
 	})
 }
 
+func (app *App) Emit(ev *ApiEvent) {
+	app.server.Emit(ev)
+	if app.mpdserver != nil {
+		app.mpdserver.Emit(ev)
+	}
+}
+
 type Config struct {
 	ConfigPath      string `koanf:"config_path"`
 	CredentialsPath string `koanf:"credentials_path"`
@@ -347,6 +356,10 @@ type Config struct {
 		CertFile    string `koanf:"cert_file"`
 		KeyFile     string `koanf:"key_file"`
 	} `koanf:"server"`
+	MPD struct {
+		Enabled bool   `koanf:"enabled"`
+		Address string `koanf:"address"` // address + port
+	}
 	Credentials struct {
 		Type        string `yaml:"type"`
 		Interactive struct {
@@ -380,6 +393,7 @@ func loadConfig(cfg *Config) error {
 		"bitrate":            160,
 		"volume_steps":       100,
 		"initial_volume":     100,
+		"mpd.address":        "localhost:6600",
 		"credentials.type":   "zeroconf",
 	}, "."), nil)
 
@@ -436,12 +450,20 @@ func main() {
 
 	// create api server if needed
 	if cfg.Server.Enabled {
-		app.server, err = NewApiServer(cfg.Server.Address, cfg.Server.Port, cfg.Server.AllowOrigin, cfg.Server.CertFile, cfg.Server.KeyFile)
+		app.server, err = NewApiServer(cfg.Server.Address, cfg.Server.Port, cfg.Server.AllowOrigin, cfg.Server.CertFile, cfg.Server.KeyFile, app.requests)
 		if err != nil {
 			log.WithError(err).Fatal("failed creating api server")
 		}
 	} else {
-		app.server, _ = NewStubApiServer()
+		app.server, _ = NewStubApiServer(app.requests)
+	}
+
+	// Create MPD server if needed.
+	if cfg.MPD.Enabled {
+		app.mpdserver, err = NewMPDServer(cfg.MPD.Address, app.requests)
+		if err != nil {
+			log.WithError(err).Fatal("failed creating MPD server")
+		}
 	}
 
 	switch cfg.Credentials.Type {

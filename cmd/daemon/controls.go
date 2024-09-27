@@ -69,7 +69,7 @@ func (p *AppPlayer) handlePlayerEvent(ev *player.Event) {
 		p.state.player.IsBuffering = false
 		p.updateState()
 
-		p.app.server.Emit(&ApiEvent{
+		p.app.Emit(&ApiEvent{
 			Type: ApiEventTypePlaying,
 			Data: ApiEventDataPlaying{
 				Uri:        p.state.player.Track.Uri,
@@ -82,7 +82,7 @@ func (p *AppPlayer) handlePlayerEvent(ev *player.Event) {
 		p.state.player.IsBuffering = false
 		p.updateState()
 
-		p.app.server.Emit(&ApiEvent{
+		p.app.Emit(&ApiEvent{
 			Type: ApiEventTypePaused,
 			Data: ApiEventDataPaused{
 				Uri:        p.state.player.Track.Uri,
@@ -90,7 +90,7 @@ func (p *AppPlayer) handlePlayerEvent(ev *player.Event) {
 			},
 		})
 	case player.EventTypeNotPlaying:
-		p.app.server.Emit(&ApiEvent{
+		p.app.Emit(&ApiEvent{
 			Type: ApiEventTypeNotPlaying,
 			Data: ApiEventDataNotPlaying{
 				Uri:        p.state.player.Track.Uri,
@@ -105,7 +105,7 @@ func (p *AppPlayer) handlePlayerEvent(ev *player.Event) {
 
 		// if no track to be played, just stop
 		if !hasNextTrack {
-			p.app.server.Emit(&ApiEvent{
+			p.app.Emit(&ApiEvent{
 				Type: ApiEventTypeStopped,
 				Data: ApiEventDataStopped{
 					PlayOrigin: p.state.playOrigin(),
@@ -113,7 +113,7 @@ func (p *AppPlayer) handlePlayerEvent(ev *player.Event) {
 			})
 		}
 	case player.EventTypeStopped:
-		p.app.server.Emit(&ApiEvent{
+		p.app.Emit(&ApiEvent{
 			Type: ApiEventTypeStopped,
 			Data: ApiEventDataStopped{
 				PlayOrigin: p.state.playOrigin(),
@@ -202,7 +202,7 @@ func (p *AppPlayer) loadCurrentTrack(paused, drop bool) error {
 	p.state.player.IsPaused = paused
 	p.updateState()
 
-	p.app.server.Emit(&ApiEvent{
+	p.app.Emit(&ApiEvent{
 		Type: ApiEventTypeWillPlay,
 		Data: ApiEventDataWillPlay{
 			Uri:        spotId.Uri(),
@@ -241,7 +241,7 @@ func (p *AppPlayer) loadCurrentTrack(paused, drop bool) error {
 	p.updateState()
 	p.schedulePrefetchNext()
 
-	p.app.server.Emit(&ApiEvent{
+	p.app.Emit(&ApiEvent{
 		Type: ApiEventTypeMetadata,
 		Data: ApiEventDataMetadata(*NewApiResponseStatusTrack(p.primaryStream.Media, p.prodInfo, trackPosition)),
 	})
@@ -253,7 +253,7 @@ func (p *AppPlayer) setOptions(repeatingContext *bool, repeatingTrack *bool, shu
 	if repeatingContext != nil && *repeatingContext != p.state.player.Options.RepeatingContext {
 		p.state.player.Options.RepeatingContext = *repeatingContext
 
-		p.app.server.Emit(&ApiEvent{
+		p.app.Emit(&ApiEvent{
 			Type: ApiEventTypeRepeatContext,
 			Data: ApiEventDataRepeatContext{
 				Value: *repeatingContext,
@@ -266,7 +266,7 @@ func (p *AppPlayer) setOptions(repeatingContext *bool, repeatingTrack *bool, shu
 	if repeatingTrack != nil && *repeatingTrack != p.state.player.Options.RepeatingTrack {
 		p.state.player.Options.RepeatingTrack = *repeatingTrack
 
-		p.app.server.Emit(&ApiEvent{
+		p.app.Emit(&ApiEvent{
 			Type: ApiEventTypeRepeatTrack,
 			Data: ApiEventDataRepeatTrack{
 				Value: *repeatingTrack,
@@ -288,7 +288,7 @@ func (p *AppPlayer) setOptions(repeatingContext *bool, repeatingTrack *bool, shu
 		p.state.player.NextTracks = p.state.tracks.NextTracks()
 		p.state.player.Index = p.state.tracks.Index()
 
-		p.app.server.Emit(&ApiEvent{
+		p.app.Emit(&ApiEvent{
 			Type: ApiEventTypeShuffleContext,
 			Data: ApiEventDataShuffleContext{
 				Value: *shufflingContext,
@@ -391,7 +391,7 @@ func (p *AppPlayer) seek(position int64) error {
 	p.updateState()
 	p.schedulePrefetchNext()
 
-	p.app.server.Emit(&ApiEvent{
+	p.app.Emit(&ApiEvent{
 		Type: ApiEventTypeSeek,
 		Data: ApiEventDataSeek{
 			Uri:        p.state.player.Track.Uri,
@@ -438,7 +438,7 @@ func (p *AppPlayer) skipNext() error {
 
 	// if no track to be played, just stop
 	if !hasNextTrack {
-		p.app.server.Emit(&ApiEvent{
+		p.app.Emit(&ApiEvent{
 			Type: ApiEventTypeStopped,
 			Data: ApiEventDataStopped{
 				PlayOrigin: p.state.playOrigin(),
@@ -552,7 +552,7 @@ func (p *AppPlayer) updateVolume(newVal uint32) {
 		log.WithError(err).Error("failed put state after volume change")
 	}
 
-	p.app.server.Emit(&ApiEvent{
+	p.app.Emit(&ApiEvent{
 		Type: ApiEventTypeVolume,
 		Data: ApiEventDataVolume{
 			Value: uint32(math.Ceil(float64(newVal*p.app.cfg.VolumeSteps) / player.MaxStateVolume)),

@@ -259,9 +259,9 @@ type ApiEventDataShuffleContext struct {
 	Value bool `json:"value"`
 }
 
-func NewApiServer(address string, port int, allowOrigin string, certFile string, keyFile string) (_ *ApiServer, err error) {
+func NewApiServer(address string, port int, allowOrigin string, certFile string, keyFile string, requests chan ApiRequest) (_ *ApiServer, err error) {
 	s := &ApiServer{allowOrigin: allowOrigin, certFile: certFile, keyFile: keyFile}
-	s.requests = make(chan ApiRequest)
+	s.requests = requests
 
 	s.listener, err = net.Listen("tcp", fmt.Sprintf("%s:%d", address, port))
 	if err != nil {
@@ -274,9 +274,9 @@ func NewApiServer(address string, port int, allowOrigin string, certFile string,
 	return s, nil
 }
 
-func NewStubApiServer() (*ApiServer, error) {
+func NewStubApiServer(requests chan ApiRequest) (*ApiServer, error) {
 	s := &ApiServer{}
-	s.requests = make(chan ApiRequest)
+	s.requests = requests
 	return s, nil
 }
 
@@ -595,10 +595,6 @@ func (s *ApiServer) Emit(ev *ApiEvent) {
 			log.WithError(err).Error("failed communicating with websocket client")
 		}
 	}
-}
-
-func (s *ApiServer) Receive() <-chan ApiRequest {
-	return s.requests
 }
 
 func (s *ApiServer) Close() {
