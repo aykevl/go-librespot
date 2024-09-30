@@ -5,6 +5,7 @@ go 1.22.2
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1
 	github.com/devgianlu/shannon v0.0.0-20230613115856-82ec90b7fa7e
+	github.com/google/uuid v1.6.0
 	github.com/grandcat/zeroconf v1.0.0
 	github.com/knadh/koanf/parsers/yaml v0.1.0
 	github.com/knadh/koanf/providers/confmap v0.1.0

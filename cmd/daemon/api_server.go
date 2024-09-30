@@ -27,6 +27,7 @@ type ApiServer struct {
 	allowOrigin string
 	certFile    string
 	keyFile     string
+	port        int
 
 	close    bool
 	listener net.Listener
@@ -266,7 +267,7 @@ type ApiEventDataShuffleContext struct {
 }
 
 func NewApiServer(address string, port int, allowOrigin string, certFile string, keyFile string) (_ *ApiServer, err error) {
-	s := &ApiServer{allowOrigin: allowOrigin, certFile: certFile, keyFile: keyFile}
+	s := &ApiServer{allowOrigin: allowOrigin, certFile: certFile, keyFile: keyFile, port: port}
 	s.requests = make(chan ApiRequest)
 
 	s.listener, err = net.Listen("tcp", fmt.Sprintf("%s:%d", address, port))
@@ -570,6 +571,12 @@ func (s *ApiServer) serve() {
 			}
 		}
 	})
+	m.HandleFunc("/upnp/description.xml", s.upnpServeDescription)
+	m.HandleFunc("/upnp/scpd/RenderingControl3.xml", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/xml; charset=utf-8")
+		w.Write([]byte(scpdRenderingControl))
+	})
+	m.HandleFunc("/upnp/MediaRenderer/RenderingControl3.xml", s.upnpRenderingControl)
 
 	c := cors.New(cors.Options{
 		AllowedOrigins:      []string{s.allowOrigin},
